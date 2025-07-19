@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <title>Статия с коментари</title>
+  <style>
+    body { max-width:600px; margin:40px auto; font-family:Arial; }
+    .comment { background:#f0f0f0; padding:8px; margin-bottom:12px; border-radius:4px; }
+    form > * { width:100%; margin:4px 0; padding:8px; box-sizing:border-box; }
+  </style>
+</head>
+<body>
+  <h1>Заглавие на статия</h1>
+  <p>Това е примерна статия. Остави коментар:</p>
+
+  <form id="commentForm">
+    <input name="name" placeholder="Твоето име" required>
+    <textarea name="text" placeholder="Коментар..." required></textarea>
+    <button>Изпрати</button>
+  </form>
+
+  <h2>Коментари</h2>
+  <div id="comments"></div>
+
+  <script>
+    async function loadComments() {
+      const res = await fetch('/api/comments');
+      const data = await res.json();
+      if (!res.ok) {
+        return document.getElementById('comments')
+          .innerHTML = `<p style="color:red;">${data.error}</p>`;
+      }
+      document.getElementById('comments').innerHTML =
+        data.map(c => `<div class="comment"><strong>${c.name}</strong><br>${c.text}</div>`).join('');
+    }
+    document.getElementById('commentForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = e.target;
+      await fetch('/api/comments', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ name:f.name.value, text:f.text.value })
+      });
+      f.reset();
+      loadComments();
+    });
+    loadComments();
+  </script>
+</body>
+</html>
