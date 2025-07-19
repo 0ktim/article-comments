@@ -61,8 +61,8 @@ app.post('/api/comments', async (req, res) => {
   }
 })
 
-// 5) SPA fallback (★ поправено от '*' на '/*' ★)
-app.get('/*', (req, res) => {
+// 5) SPA fallback - serve index.html for all non-API routes
+app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 })
 
