@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.use(express.json())
 
 // 2) Свързване с MongoDB
-const mongoUri = process.env.MONGO_URI
+const mongoUri = process.env.MONGO_URL
 if (!mongoUri) {
   console.error('❌ Missing MongoDB connection string in env vars')
   process.exit(1)
