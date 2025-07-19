@@ -1,53 +1,81 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
+// index.js
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+require('dotenv').config()
+const express = require('express')
+const mongoose = require('mongoose')
+const path = require('path')
 
-// Вземи URI от Railway променливата
-const mongoUri = process.env.MONGODB_URL  // <-- провери тук точния ключ
-               || process.env.MONGODB_URI
-               || process.env.DATABASE_URL;
+const app = express()
 
+// Serve your static front-end from /public
+app.use(express.static(path.join(__dirname, 'public')))
+
+// Parse JSON bodies on POST requests
+app.use(express.json())
+
+// MongoDB connection
+const mongoUri = process.env.MONGODB_URI
 if (!mongoUri) {
-  console.error('❌ Missing MongoDB connection string in env vars');
-  process.exit(1);
+  console.error('❌ Missing MongoDB connection string in env vars')
+  process.exit(1)
 }
 
-mongoose.connect(mongoUri)
+mongoose
+  .connect(mongoUri)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err)
+    process.exit(1)
+  })
 
-const commentSchema = new mongoose.Schema({
-  name: String,
-  text: String
-}, { timestamps: true });
-const Comment = mongoose.model('Comment', commentSchema);
+// Define a Comment schema + model
+const commentSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    text: { type: String, required: true, trim: true }
+  },
+  { timestamps: true }
+)
 
-// POST /api/comments – добави коментар
-app.post('/api/comments', async (req, res) => {
-  try {
-    const c = new Comment(req.body);
-    await c.save();
-    res.status(201).json(c);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+const Comment = mongoose.model('Comment', commentSchema)
 
-// GET /api/comments – вземи списъка
+// GET /api/comments
+//   returns all comments sorted by newest first
 app.get('/api/comments', async (req, res) => {
   try {
-    const list = await Comment.find().sort({ createdAt: -1 });
-    res.json(list);
+    const comments = await Comment.find().sort({ createdAt: -1 })
+    res.json(comments)
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error fetching comments:', err)
+    res.status(500).json({ error: 'Failed to fetch comments' })
   }
-});
+})
 
-// Стартирай сървъра
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server listening on http://localhost:${PORT}`));
+// POST /api/comments
+//   accepts { name, text } in JSON body and creates a new comment
+app.post('/api/comments', async (req, res) => {
+  const { name, text } = req.body
+  if (!name || !text) {
+    return res.status(400).json({ error: 'Name and text are required' })
+  }
+
+  try {
+    const newComment = new Comment({ name, text })
+    await newComment.save()
+    res.status(201).json(newComment)
+  } catch (err) {
+    console.error('Error saving comment:', err)
+    res.status(500).json({ error: 'Failed to save comment' })
+  }
+})
+
+// Fallback: serve index.html for any other route (SPA)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'))
+})
+
+// Start the server
+const port = process.env.PORT || 3000
+app.listen(port, () => {
+  console.log(`🚀 Server listening on http://localhost:${port}`)
+})
